@@ -54,3 +54,15 @@ def read_project_file(file_path: str) -> str:
         return f"Error: Cannot decode file (not UTF-8): {file_path}"
     except Exception as e:
         return f"Error reading file {file_path}: {e}"
+
+
+def explain_code(file_path: str) -> str:
+    """Read a Python source file from the target project to explain its contents.
+
+    Args:
+        file_path: Relative path of the file from the project root (e.g. 'main.py').
+
+    Returns:
+        The content of the file, or an error message if the file cannot be read.
+    """
+    return read_project_file(file_path)

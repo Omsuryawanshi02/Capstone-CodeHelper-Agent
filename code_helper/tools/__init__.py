@@ -9,13 +9,14 @@ Custom Python tools used by the ADK agents:
 """
 
 from .search_tools import rag_search
-from .explain_tools import read_project_file
+from .explain_tools import read_project_file, explain_code
 from .architecture_tools import list_project_files, inspect_imports
 from .onboarding_tools import get_project_overview
 
 __all__ = [
     "rag_search",
     "read_project_file",
+    "explain_code",
     "list_project_files",
     "inspect_imports",
     "get_project_overview",

@@ -117,16 +117,9 @@ describe('MessageComposer component', () => {
 });
 
 describe('EmptyState component', () => {
-  it('renders all four starter questions and triggers callback on click', () => {
-    const handleSelect = vi.fn();
-    render(<EmptyState onSelectPrompt={handleSelect} />);
-
-    expect(screen.getByText(/where is the chunk_code function implemented/i)).toBeInTheDocument();
-    expect(screen.getByText(/what does config\.py do/i)).toBeInTheDocument();
-    expect(screen.getByText(/which files import config\.py/i)).toBeInTheDocument();
-    expect(screen.getByText(/how do i get started with this project/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText(/what does config\.py do/i));
-    expect(handleSelect).toHaveBeenCalledWith('What does config.py do?');
+  it('renders title and application description', () => {
+    render(<EmptyState />);
+    expect(screen.getByText('Multi-Agent Code Helper')).toBeInTheDocument();
+    expect(screen.getByText(/ask anything about your python codebase/i)).toBeInTheDocument();
   });
 });

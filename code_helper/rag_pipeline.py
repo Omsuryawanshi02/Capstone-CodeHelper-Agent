@@ -196,7 +196,10 @@ def embed_text(texts: List[str]) -> List[List[float]]:
     if not result or not result.data:
         raise RuntimeError("Embedding API returned empty result")
 
-    embeddings = [item.embedding for item in result.data]
+    embeddings = [
+        item["embedding"] if isinstance(item, dict) else getattr(item, "embedding")
+        for item in result.data
+    ]
 
     # Validate dimensions - NVIDIA nemotron-3-embed-1b produces 2048 dimensions
     expected_dim = 2048

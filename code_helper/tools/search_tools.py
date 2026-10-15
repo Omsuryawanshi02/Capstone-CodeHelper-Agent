@@ -7,7 +7,7 @@ query and retrieving matching chunks from Pinecone.
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from ..config import NVIDIA_EMBED_MODEL, PINECONE_INDEX_NAME, validate_config
 from pinecone import Pinecone
@@ -53,7 +53,8 @@ def rag_search(query: str) -> str:
         if not embed_result or not embed_result.data:
             return "Error: Embedding model returned no data."
 
-        query_embedding = embed_result.data[0].embedding
+        item = embed_result.data[0]
+        query_embedding = item["embedding"] if isinstance(item, dict) else getattr(item, "embedding")
 
         # Query Pinecone for top matches
         # Retrieve top 5 matches initially as required
@@ -77,10 +78,10 @@ def rag_search(query: str) -> str:
             text = match.get("metadata", {}).get("text", "")
 
             output_lines.append(
-                f"Score: {score:.4f} | File: {filename} | "
-                f"Lines: {line_start}-{line_end}\n"
-                f"  {text[:200]}..."
+                f"Score: {score:.4f} | File: {filename} | Lines: {line_start}-{line_end}\n"
+                f"```python\n{text.strip()}\n```"
             )
+
 
         return "\n".join(output_lines)
 

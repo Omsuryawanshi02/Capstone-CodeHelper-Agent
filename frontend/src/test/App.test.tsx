@@ -90,9 +90,11 @@ describe('App component integration', () => {
     render(<App />);
     await screen.findByText('Initial Session');
 
-    // Click starter question
-    const questionButton = await screen.findByText(/where is the chunk_code function implemented/i);
-    fireEvent.click(questionButton);
+    // Type and submit user question
+    const textarea = screen.getByPlaceholderText(/ask where code is/i);
+    fireEvent.change(textarea, { target: { value: 'Where is the chunk_code function implemented?' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
 
     // Verify user message appears
     expect(
@@ -127,8 +129,10 @@ describe('App component integration', () => {
     render(<App />);
     await screen.findByText('Initial Session');
 
-    const questionButton = await screen.findByText(/what does config\.py do/i);
-    fireEvent.click(questionButton);
+    const textarea = screen.getByPlaceholderText(/ask where code is/i);
+    fireEvent.change(textarea, { target: { value: 'What does config.py do?' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
 
     const matches = await screen.findAllByText(/Target project file not found/i);
     expect(matches.length).toBeGreaterThanOrEqual(1);

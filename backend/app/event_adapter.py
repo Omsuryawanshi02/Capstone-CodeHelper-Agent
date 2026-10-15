@@ -80,6 +80,9 @@ class EventAdapter:
         # 3. Check for tool / function calls in actions or content
         events.extend(self._extract_tool_activity_and_sources(raw_data))
 
+        # Check if turn is completed
+        turn_complete = bool(raw_data.get("turnComplete") or raw_data.get("turn_complete", False))
+
         # 4. Extract content and text tokens
         content = raw_data.get("content", {})
         parts = content.get("parts", []) if isinstance(content, dict) else []
@@ -89,7 +92,8 @@ class EventAdapter:
 
             text_chunk = part.get("text")
             if text_chunk:
-                is_partial = raw_data.get("partial", False)
+                # If partial is explicitly set or if the turn is not complete, stream as token
+                is_partial = raw_data.get("partial", not turn_complete)
                 if is_partial:
                     # Incremental token streaming
                     events.append(
@@ -103,7 +107,6 @@ class EventAdapter:
                 self.accumulated_text += text_chunk
 
         # If turn is completed or complete message is ready
-        turn_complete = raw_data.get("turnComplete") or raw_data.get("turn_complete", False)
         if turn_complete:
             self.turn_completed = True
             # Emit final message state if we have accumulated text
@@ -177,8 +180,13 @@ class EventAdapter:
                 # Check for RAG search results containing Score/File/Lines
                 text_content = ""
                 if isinstance(response_data, dict):
-                    text_content = str(response_data.get("output", "") or response_data.get("content", ""))
+                    text_content = str(
+                        response_data.get("result", "")
+                        or response_data.get("output", "")
+                        or response_data.get("content", "")
+                    )
                 elif isinstance(response_data, str):
+
                     text_content = response_data
 
                 if text_content and ("Score:" in text_content or "File:" in text_content):

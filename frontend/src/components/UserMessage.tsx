@@ -9,12 +9,18 @@ interface UserMessageProps {
 export const UserMessage: React.FC<UserMessageProps> = ({ message }) => {
   return (
     <div className="flex w-full justify-end py-2">
-      <div className="flex max-w-[85%] sm:max-w-[75%] items-start gap-3">
-        <div className="rounded-2xl rounded-tr-none bg-emerald-600 px-4 py-3 text-white shadow-sm text-sm sm:text-base leading-relaxed break-words">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+      <div className="flex max-w-[85%] items-start gap-2.5 flex-row-reverse">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-obsidian-elevated text-lime-accent border border-obsidian-border shadow-sm mt-0.5">
+          <User className="h-3.5 w-3.5" />
         </div>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-800/80 text-emerald-200 border border-emerald-600/40">
-          <User className="h-4 w-4" />
+
+        <div className="space-y-1 text-right">
+          <div className="inline-block rounded-xl rounded-tr-none border border-obsidian-border bg-obsidian-elevated px-4 py-2.5 text-xs text-cockpit-text shadow-sm leading-relaxed text-left">
+            {message.content}
+          </div>
+          <div className="text-[10px] text-cockpit-faint px-1">
+            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
         </div>
       </div>
     </div>

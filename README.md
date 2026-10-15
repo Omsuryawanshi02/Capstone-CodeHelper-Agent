@@ -226,6 +226,34 @@ d:/deboistech/demo/
 
 ---
 
+## Grounded Answer Rules for Multi-Agent Code Helper
+
+Correctness and evidence are more important than sounding confident. The system strictly adheres to the following grounding rules:
+
+### Execution Pipeline
+1. **Identify category & route:** Route the question according to intent to the correct specialist.
+2. **Inspect source evidence:** Retrieve or inspect code using the specialist's assigned tools.
+3. **Validate claims:** Ensure returned evidence directly supports the answer.
+4. **Distinguish facts from inference:** Separate observed code behavior from inferences.
+5. **Acknowledge limits:** If evidence is insufficient or contradictory, explicitly state what could not be verified.
+
+### Specialist Specific Grounding Rules
+- **Code Searcher:** Use `rag_search` for questions about code locations and implementations. Inspect returned filenames, line ranges and snippets. Never invent filenames, line numbers, functions, classes or variables. If no relevant evidence is found, explicitly say so.
+- **Code Explainer:** Read actual files through Filesystem MCP / `read_project_file`. Explain observed implementation, imports, functions, control flow and dependencies without describing intended behavior as implemented behavior.
+- **Architecture Mapper (Deterministic, No LLM):** Use Python AST analysis on actual source files. Generate diagram edges only from validated relationships without LLM hallucinations.
+- **Onboarding Guide:** Use repository files and verified setup instructions. Do not invent commands, environment variables, or entry points. Label unverified instructions as unverified.
+- **Coordinator:** Route questions according to intent. Never independently fabricate answers when a specialist should handle it. Preserve specialist evidence and uncertainty.
+
+### Standard Grounded Response Format
+For code-specific answers:
+- **`**Answer:**`** A direct answer to the user's question.
+- **`**Evidence:**`** The relevant file path, line range and source snippet when available.
+- **`**Explanation:**`** How the evidence supports the answer.
+- **`**Limitations:**`** Any uncertainty, missing files, conflicting evidence or checks that remain necessary.
+
+---
+
+
 ## Quickstart: Running the Complete Application
 
 ### 1. Environment Setup

@@ -7,9 +7,16 @@ import { EmptyState } from './EmptyState';
 interface ChatMessageListProps {
   messages: ChatMessage[];
   onSelectStarter: (prompt: string) => void;
+  onSelectFile?: (filePath: string) => void;
+  onNavigateTab?: (tab: 'chat' | 'explorer' | 'architecture' | 'change_review') => void;
 }
 
-export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, onSelectStarter }) => {
+export const ChatMessageList: React.FC<ChatMessageListProps> = ({
+  messages,
+  onSelectStarter,
+  onSelectFile,
+  onNavigateTab,
+}) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,7 +24,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, onSe
   }, [messages, messages[messages.length - 1]?.content]);
 
   if (messages.length === 0) {
-    return <EmptyState onSelectPrompt={onSelectStarter} />;
+    return (
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6">
+        <EmptyState onSelectPrompt={onSelectStarter} onNavigateTab={onNavigateTab} />
+      </div>
+    );
   }
 
   return (
@@ -26,7 +37,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, onSe
         msg.role === 'user' ? (
           <UserMessage key={msg.id} message={msg} />
         ) : (
-          <AssistantMessage key={msg.id} message={msg} />
+          <AssistantMessage
+            key={msg.id}
+            message={msg}
+            onSelectAction={onSelectStarter}
+            onSelectFile={onSelectFile}
+          />
         )
       )}
       <div ref={bottomRef} className="h-4" />

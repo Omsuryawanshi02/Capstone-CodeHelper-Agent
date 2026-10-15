@@ -13,10 +13,11 @@ from typing import List
 
 from google.adk import Agent
 from google.adk.tools import FunctionTool, McpToolset
+from google.adk.tools.mcp_tool import StdioConnectionParams
 from mcp.client.stdio import StdioServerParameters
 
 from .config import validate_config, LITELLM_CHAT_MODEL
-from .tools import rag_search, read_project_file, list_project_files, inspect_imports, get_project_overview
+from .tools import rag_search, read_project_file, explain_code, list_project_files, inspect_imports, get_project_overview
 
 
 # ---------------------------------------------------------------------------
@@ -61,9 +62,28 @@ _FILESYSTEM_MCP_PARAMS = StdioServerParameters(
 
 # Build the MCP toolset (read-only filesystem operations)
 # tool_filter restricts to read-only operations
+# StdioConnectionParams provides a configurable timeout (30s) instead of the default 5s
+# which avoids timeouts when launching npx.cmd on Windows.
 _FILES_MCP_TOOLSET = McpToolset(
-    connection_params=_FILESYSTEM_MCP_PARAMS,
+    connection_params=StdioConnectionParams(
+        server_params=_FILESYSTEM_MCP_PARAMS,
+        timeout=30.0,
+    ),
     tool_filter=["read_file", "list_directory", "read_multiple_files"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Grounded Answer Rules & Response Format
+# ---------------------------------------------------------------------------
+
+GROUNDED_RESPONSE_FORMAT = (
+    "\n\nFor code-specific answers, format your response using this structure:\n"
+    "**Answer:** A direct answer to the user's question.\n"
+    "**Evidence:** The relevant file path, line range and source snippet when available.\n"
+    "**Explanation:** How the evidence supports the answer.\n"
+    "**Limitations:** Any uncertainty, missing files, conflicting evidence or checks that remain necessary.\n"
+    "Keep the answer concise for simple questions and detailed for architecture or debugging questions. Never manufacture evidence to fill a missing section."
 )
 
 
@@ -80,11 +100,18 @@ coordinator = Agent(
         "Avoid answering questions independently instead of delegating."
     ),
     instruction=(
-        "Route user questions to the appropriate specialist agent:\n"
-        "- Code locations (function/variable/feature)          -> code_searcher\n"
-        "- Explanation of a complete file                      -> code_explainer\n"
-        "- Imports and architecture                           -> architecture_mapper\n"
-        "- Project setup and onboarding                       -> onboarding_guide\n"
+        "You are answering questions about an actual source-code repository. Correctness and evidence are more important than sounding confident.\n\n"
+        "Route user questions according to their intent to the appropriate specialist agent:\n"
+        "- Explaining any specific file, what a file does, or its purpose (e.g. indexer.py, main.py, config.py, query_pipeline.py, vector_store.py) -> code_explainer\n"
+        "- Searching for where a specific function, class, variable, or feature is implemented -> code_searcher\n"
+        "- Module imports, dependency graphs, and AST architecture -> architecture_mapper\n"
+        "- Overall project setup, onboarding guide, and repository-wide overview -> onboarding_guide\n\n"
+        "Coordinator Grounding Rules:\n"
+        "- Route questions according to their intent.\n"
+        "- Explaining or asking about the purpose of any specific filename (.py) MUST ALWAYS be delegated to code_explainer.\n"
+        "- Do not independently fabricate the answer when a specialist should handle it.\n"
+        "- Preserve the specialist's evidence and uncertainty.\n"
+        "- Do not misrepresent which worker executed the task.\n"
         "Always delegate to a worker instead of answering independently."
     ),
     # Coordinator does not need direct tools; it delegates to workers
@@ -104,14 +131,20 @@ code_searcher = Agent(
         "Base claims on retrieved evidence and admit when search finds no useful evidence."
     ),
     instruction=(
-        "When the user asks about code location or implementation:\n"
-        "1. Use the rag_search tool to find relevant code chunks from Pinecone\n"
-        "2. Present the findings with filenames, line numbers, and scores\n"
-        "3. Base all claims on the retrieved evidence\n"
-        "4. If no useful evidence is found, admit it clearly\n"
-        "5. Do not invent or hallucinate source code"
+        "You are the Code Searcher agent answering questions about an actual source-code repository.\n\n"
+        "Code Searcher Grounding Rules:\n"
+        "1. Use `rag_search` for questions about code locations and implementations.\n"
+        "2. Inspect the returned filenames, line ranges and snippets.\n"
+        "3. Do not invent filenames, line numbers, functions, classes or variables.\n"
+        "4. If retrieved chunks are unrelated, refine the search using relevant technical terms and identifiers.\n"
+        "5. Do not claim that a feature exists merely because its name appears in a document.\n"
+        "6. If no relevant evidence is found after reasonable searches, explicitly say so.\n"
+        "7. Distinguish source-code facts from inferences.\n"
+        "8. If the user asks about project onboarding or setup, transfer to 'onboarding_guide'.\n"
+        "9. If the user asks about file connections or architecture, transfer to 'architecture_mapper'.\n"
+        "10. If the user asks to explain a complete source file, transfer to 'code_explainer'.\n"
+        + GROUNDED_RESPONSE_FORMAT
     ),
-    # Register the rag_search tool for this agent
     tools=[FunctionTool(func=rag_search)],
 )
 
@@ -124,22 +157,29 @@ code_explainer = Agent(
     name="code_explainer",
     model=CHAT_MODEL,
     description=(
-        "Read complete source files using Filesystem MCP. Explain imports, "
-        "functions, classes, control flow, and dependencies. Distinguish "
-        "observed behavior from inference. Never invent code or claim to "
-        "have inspected unread files."
+        "Read and explain specific source files (e.g., indexer.py, main.py, config.py, query_pipeline.py, vector_store.py). "
+        "Explains what any individual file does, its purpose, functions, classes, control flow, and dependencies "
+        "using read_project_file or Filesystem MCP. Always use this agent when the user asks "
+        "about a particular file's purpose, role, or implementation."
     ),
     instruction=(
-        "When the user asks about what a particular file does:\n"
-        "1. Use the Filesystem MCP to read the complete source file\n"
-        "2. Explain imports, functions, classes, control flow, and dependencies\n"
-        "3. Distinguish between observed code behavior and AI inference\n"
-        "4. Never invent code or claim to have inspected unread files\n"
-        "5. Restrict filesystem access to the target project root directory"
+        "You are the Code Explainer agent answering questions about an actual source-code repository.\n\n"
+        "Code Explainer Grounding Rules:\n"
+        "1. Read the actual file through `read_project_file`, `explain_code`, or Filesystem MCP `read_file`.\n"
+        "2. Explain the observed implementation, imports, functions, control flow and dependencies.\n"
+        "3. Do not describe intended behavior as implemented behavior without source evidence.\n"
+        "4. Include relevant filenames and line numbers where available.\n"
+        "5. Do not infer runtime behavior that cannot be established from static inspection.\n"
+        "6. Do NOT transfer to 'code_explainer' as you are already code_explainer.\n"
+        "7. If the user asks where a function is located, transfer to 'code_searcher'.\n"
+        "8. If the user asks about architecture or imports, transfer to 'architecture_mapper'.\n"
+        "9. If the user asks about project setup or onboarding, transfer to 'onboarding_guide'.\n"
+        + GROUNDED_RESPONSE_FORMAT
     ),
-    # Register the read_project_file tool and Filesystem MCP for this agent
+    # Register the read_project_file tool, explain_code alias, and Filesystem MCP for this agent
     tools=[
         FunctionTool(func=read_project_file),
+        FunctionTool(func=explain_code),
         _FILES_MCP_TOOLSET,
     ],
 )
@@ -157,7 +197,8 @@ architecture_mapper = ArchitectureMapperAgent(
         "Deterministic Python architecture mapper. Discovers source files, "
         "extracts imports and AST definitions, builds module dependency graphs, "
         "generates verified Mermaid and draw.io diagrams, and inspects code changes. "
-        "Executes deterministically without language model inference."
+        "Executes deterministically without language model inference. Generates "
+        "diagram edges only from validated relationships."
     ),
     tools=[
         FunctionTool(func=list_project_files),
@@ -175,21 +216,26 @@ onboarding_guide = Agent(
     name="onboarding_guide",
     model=CHAT_MODEL,
     description=(
-        "Explain the project purpose using available evidence, identify important "
-        "files and entry points, describe installation and execution steps, and "
-        "recommend a reading order for beginners."
+        "High-level repository onboarding, installation, prerequisites, execution commands, and project entry points. "
+        "Provides repo-level overview for newcomers. Does NOT explain specific source code files."
     ),
     instruction=(
-        "When the user asks about project setup or onboarding:\n"
-        "1. Use get_project_overview to report verified project structure\n"
-        "2. Identify important files and entry points from evidence\n"
-        "3. Describe installation and execution steps\n"
-        "4. Recommend a reading order for beginners\n"
-        "5. Distinguish documented commands from inferred commands\n"
-        "6. Do not invent functionality or execution commands"
+        "You are the Onboarding Guide agent answering questions about an actual source-code repository.\n\n"
+        "Onboarding Guide Grounding Rules:\n"
+        "1. Use repository files and verified setup instructions via `get_project_overview`.\n"
+        "2. Do not invent installation commands, environment variables, entry points or features.\n"
+        "3. Label unverified instructions as unverified.\n"
+        "4. If the user asks where a function/variable/code is located, IMMEDIATELY transfer to 'code_searcher'.\n"
+        "5. If the user asks about imports, connections between files, or architecture, IMMEDIATELY transfer to 'architecture_mapper'.\n"
+        "6. If the user asks to explain a specific file, what a file does, or the purpose of any file (e.g., indexer.py, main.py), IMMEDIATELY transfer to 'code_explainer' or use `read_project_file` to inspect it.\n"
+        "7. NEVER output raw JSON function call strings or phrases like 'The function call ... best answers'. Write natural, helpful explanations.\n"
+        + GROUNDED_RESPONSE_FORMAT
     ),
-    # Register the onboarding tool for this agent
-    tools=[FunctionTool(func=get_project_overview)],
+    # Register the onboarding tool and read_project_file for this agent
+    tools=[
+        FunctionTool(func=get_project_overview),
+        FunctionTool(func=read_project_file),
+    ],
 )
 
 
@@ -206,11 +252,16 @@ coordinator.sub_agents = [
     architecture_mapper,
     onboarding_guide,
 ]
+# Ensure Google ADK internal parent-child relationships are set for all sub-agents
+coordinator._BaseAgent__set_parent_agent_for_sub_agents()
+
+
 
 # Export tools for external access
 TOOLS = {
     "rag_search": rag_search,
     "read_project_file": read_project_file,
+    "explain_code": explain_code,
     "list_project_files": list_project_files,
     "inspect_imports": inspect_imports,
     "get_project_overview": get_project_overview,
