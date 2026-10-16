@@ -863,7 +863,7 @@ In restricted network environments, LiteLLM may attempt to fetch model cost maps
 <details>
 <summary><b>3. Pinecone Index creation or region mismatch</b></summary>
 <br>
-Ensure your Pinecone account tier supports the cloud and region specified in <code>.env</code> (default: <code>PINECONE_CLOUD=aws</code> and <code>PINECONE_REGION=us-east-1</code>). If creating manually, set dimensions to <code>2048</code> for <code>nvidia/nemotron-3-embed-1b</code> with <code>cosine</code> metric.
+Ensure your Pinecone account tier supports the cloud and region specified in <code>.env</code> (default: <code>PINECONE_CLOUD=aws</code> and <code>PINECONE_REGION=us-east-1</code>). If creating manually, set dimensions to <code>1024</code> for <code>nvidia/nemotron-3-embed-1b</code> with <code>cosine</code> metric.
 </details>
 
 <details>

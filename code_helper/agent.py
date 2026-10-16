@@ -170,6 +170,7 @@ code_explainer = Agent(
         "   - Target application source files reside in `target_project/` (e.g., `main.py`, `config.py`, `indexer.py`, `query_pipeline.py`, `vector_store.py`).\n"
         "   - Multi-agent framework source files reside in `code_helper/`.\n"
         "   - The coordinator and worker agent definitions are implemented in `code_helper/agent.py`. If the user asks to read the coordinator's Python source file or summarize its imports and configuration, read `code_helper/agent.py`.\n"
+        "   - For large files (such as `rag_pipeline.py` with 400+ lines), use `explain_code` to retrieve the verified AST architectural outline and line ranges, and provide a clear step-by-step explanation grounded in those line numbers without echoing the entire file verbatim.\n"
         "2. Explain the observed implementation, imports, functions, control flow, agent configurations, and dependencies.\n"
         "3. Do not describe intended behavior as implemented behavior without source evidence.\n"
         "4. Include relevant filenames and line numbers where available.\n"

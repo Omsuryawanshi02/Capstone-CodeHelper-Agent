@@ -17,6 +17,7 @@ from code_helper.tools import (
     list_project_files,
     inspect_imports,
     get_project_overview,
+    explain_code,
 )
 
 
@@ -68,6 +69,34 @@ class TestReadProjectFile:
         """Should return error for non-existent file."""
         result = read_project_file("nonexistent.py")
         assert "Error" in result
+
+    def test_reads_with_string_line_numbers(self):
+        """Should safely handle string line numbers without TypeError."""
+        result = read_project_file("config.py", start_line="1", end_line="5")
+        assert "Error" not in result
+        assert len(result.splitlines()) <= 5
+
+    def test_reads_via_fallback_resolution(self):
+        """Should find code_helper files even if prefixed with target_project."""
+        result = read_project_file("target_project/rag_pipeline.py", start_line="1", end_line="10")
+        assert "Error" not in result
+
+
+class TestExplainCode:
+    """Tests for explain_code tool."""
+
+    def test_explains_compact_file(self):
+        """Should return numbered lines for compact files."""
+        result = explain_code("config.py", max_lines="120")
+        assert "=== File:" in result
+        assert "1:" in result
+
+    def test_explains_large_file_with_ast_summary(self):
+        """Should return AST summary for large files without TypeError."""
+        result = explain_code("rag_pipeline.py", max_lines="120")
+        assert "=== File:" in result
+        assert "Architectural Structural Summary" in result
+        assert "lines" in result
 
 
 class TestListProjectFiles:
