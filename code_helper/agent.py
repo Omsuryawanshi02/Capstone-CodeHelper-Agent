@@ -38,15 +38,14 @@ CHAT_MODEL = LITELLM_CHAT_MODEL
 # The server cannot access the entire drive or read .env/secrets.
 # ---------------------------------------------------------------------------
 
-# Absolute path to the target project (sibling of code_helper package)
-_TARGET_PROJECT_DIR = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "target_project",
-    )
+# Absolute paths to repo root and allowed directories
+_REPO_ROOT = os.path.abspath(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
+_TARGET_PROJECT_DIR = os.path.abspath(os.path.join(_REPO_ROOT, "target_project"))
+_CODE_HELPER_DIR = os.path.abspath(os.path.join(_REPO_ROOT, "code_helper"))
 
-# Filesystem MCP server: run via npx, restricted to target_project
+# Filesystem MCP server: run via npx, allowed directories: repo root, target_project, code_helper
 # On Windows, npx is npx.cmd; on Unix, it's npx
 import platform as _platform
 _NPX_CMD = "npx.cmd" if _platform.system() == "Windows" else "npx"
@@ -56,7 +55,9 @@ _FILESYSTEM_MCP_PARAMS = StdioServerParameters(
     args=[
         "-y",
         "@modelcontextprotocol/server-filesystem",
+        _REPO_ROOT,
         _TARGET_PROJECT_DIR,
+        _CODE_HELPER_DIR,
     ],
 )
 
@@ -102,13 +103,13 @@ coordinator = Agent(
     instruction=(
         "You are answering questions about an actual source-code repository. Correctness and evidence are more important than sounding confident.\n\n"
         "Route user questions according to their intent to the appropriate specialist agent:\n"
-        "- Explaining any specific file, what a file does, or its purpose (e.g. indexer.py, main.py, config.py, query_pipeline.py, vector_store.py) -> code_explainer\n"
+        "- Explaining any specific file, reading files via filesystem tools, or inspecting coordinator/agent configurations (e.g. indexer.py, main.py, config.py, code_helper/agent.py) -> code_explainer\n"
         "- Searching for where a specific function, class, variable, or feature is implemented -> code_searcher\n"
         "- Module imports, dependency graphs, and AST architecture -> architecture_mapper\n"
         "- Overall project setup, onboarding guide, and repository-wide overview -> onboarding_guide\n\n"
         "Coordinator Grounding Rules:\n"
         "- Route questions according to their intent.\n"
-        "- Explaining or asking about the purpose of any specific filename (.py) MUST ALWAYS be delegated to code_explainer.\n"
+        "- Explaining or asking to read/inspect any specific filename (.py) or agent source file (such as the coordinator's Python source file) MUST ALWAYS be delegated to code_explainer.\n"
         "- Do not independently fabricate the answer when a specialist should handle it.\n"
         "- Preserve the specialist's evidence and uncertainty.\n"
         "- Do not misrepresent which worker executed the task.\n"
@@ -157,16 +158,19 @@ code_explainer = Agent(
     name="code_explainer",
     model=CHAT_MODEL,
     description=(
-        "Read and explain specific source files (e.g., indexer.py, main.py, config.py, query_pipeline.py, vector_store.py). "
-        "Explains what any individual file does, its purpose, functions, classes, control flow, and dependencies "
+        "Read and explain specific source files (e.g., indexer.py, main.py, config.py, query_pipeline.py, vector_store.py, or code_helper/agent.py). "
+        "Explains what any individual file does, its purpose, functions, classes, imports, agent configuration, control flow, and dependencies "
         "using read_project_file or Filesystem MCP. Always use this agent when the user asks "
-        "about a particular file's purpose, role, or implementation."
+        "about a particular file's purpose, role, or implementation, or requests reading source files via filesystem tools."
     ),
     instruction=(
         "You are the Code Explainer agent answering questions about an actual source-code repository.\n\n"
         "Code Explainer Grounding Rules:\n"
         "1. Read the actual file through `read_project_file`, `explain_code`, or Filesystem MCP `read_file`.\n"
-        "2. Explain the observed implementation, imports, functions, control flow and dependencies.\n"
+        "   - Target application source files reside in `target_project/` (e.g., `main.py`, `config.py`, `indexer.py`, `query_pipeline.py`, `vector_store.py`).\n"
+        "   - Multi-agent framework source files reside in `code_helper/`.\n"
+        "   - The coordinator and worker agent definitions are implemented in `code_helper/agent.py`. If the user asks to read the coordinator's Python source file or summarize its imports and configuration, read `code_helper/agent.py`.\n"
+        "2. Explain the observed implementation, imports, functions, control flow, agent configurations, and dependencies.\n"
         "3. Do not describe intended behavior as implemented behavior without source evidence.\n"
         "4. Include relevant filenames and line numbers where available.\n"
         "5. Do not infer runtime behavior that cannot be established from static inspection.\n"
