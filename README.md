@@ -16,46 +16,6 @@ An enterprise-grade, full-stack developer assistant that helps engineers navigat
 
 ---
 
-## 📑 Table of Contents
-
-- [Overview & Core Value](#-overview--core-value)
-- [Capstone Final Checklist Compliance Matrix](#-capstone-final-checklist-compliance-matrix)
-- [Key Architectural Innovations](#-key-architectural-innovations)
-- [System Architecture](#-system-architecture)
-- [Specialized Multi-Agent Team](#-specialized-multi-agent-team)
-  - [1 Boss Agent (Coordinator) — Pure Router](#1-boss-agent-coordinator--pure-router)
-  - [4 Specialized Worker Agents](#4-specialized-worker-agents)
-  - [Custom Tools Suite (6 Tools — 5 with No AI)](#custom-tools-suite-6-tools--5-with-no-ai)
-  - [Filesystem MCP Integration on Code Explainer](#filesystem-mcp-integration-on-code-explainer)
-- [Genuinely No-LLM Architecture Mapper](#-genuinely-no-llm-architecture-mapper)
-- [Official Draw.io MCP Server Integration](#-official-drawio-mcp-server-integration)
-- [Code Change Analyzer & Risk Evaluation](#-code-change-analyzer--risk-evaluation)
-- [Custom 5-Stage RAG Pipeline](#-custom-5-stage-rag-pipeline)
-  - [The 5 Pipeline Stages Detailed](#the-5-pipeline-stages-detailed)
-  - [Chunking Strategy & Design Rationale Explained](#-chunking-strategy--design-rationale-explained)
-  - [Pinecone Serverless Vector Store Setup](#pinecone-serverless-vector-store-setup)
-- [Full-Stack Cockpit UI](#-full-stack-cockpit-ui)
-- [Repository Structure](#-repository-structure)
-- [Port Configuration Map](#-port-configuration-map)
-- [Getting Started & Installation](#-getting-started--installation)
-  - [Prerequisites](#prerequisites)
-  - [1. Environment Variables Configuration](#1-environment-variables-configuration)
-  - [2. Backend & Agent Setup](#2-backend--agent-setup)
-  - [3. Frontend Setup](#3-frontend-setup)
-  - [4. Codebase Vector Indexing](#4-codebase-vector-indexing)
-  - [5. Launching the Services (adk run, adk web, Full-Stack)](#5-launching-the-services)
-- [Evaluation Showcase: 3 Sample Questions & 1 Problem and Fix](#-evaluation-showcase-3-sample-questions--1-problem-and-fix)
-  - [3 Sample Questions & Grounded Responses](#3-sample-questions--grounded-responses)
-  - [Real-World Problem & Fix Case Study](#real-world-problem--fix-case-study)
-- [Grounded Response Protocol](#-grounded-response-protocol)
-- [API & Server-Sent Events (SSE) Specification](#-api--server-sent-events-sse-specification)
-- [Automated Test Suite](#-automated-test-suite)
-- [Security & Architectural Guardrails](#-security--architectural-guardrails)
-- [Troubleshooting & FAQ](#-troubleshooting--faq)
-- [License](#-license)
-
----
-
 ## 💡 Overview & Core Value
 
 Software engineers spend up to 70% of their time reading, searching, and understanding existing code before writing a single line. **Multi-Agent Code Helper** provides answers grounded in verifiable source evidence across four core questions:
